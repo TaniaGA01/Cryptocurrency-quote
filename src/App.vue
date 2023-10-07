@@ -1,61 +1,19 @@
 <script setup lang="ts">
-import { ref, reactive, onMounted, computed } from 'vue';
+import { ref, reactive } from 'vue';
+import { IQuote } from './interfaces/crypto.intefaces'
+import useCrypto from './composables/useCrypto'
 import Alert from './components/Alert.vue';
+import Spinner from './components/Spinner.vue';
+import ResultValues from './components/ResultValues.vue'
 
-interface ICurrency{
-  id:number,
-  code:string,
-  text:string
-}
-interface ICryptoCurrencies{
-  CoinInfo:{
-    Id:string,
-    FullName:string,
-    Name:string
-  }
-}
-
-interface IQuote{
-  currency:string,
-  cryptoCurrency:string
-}
-
-const currencies = ref<ICurrency[]>([
-      { id:0, code: 'USD', text: 'U.S. dollar'},
-      { id:1, code: 'MXN', text: 'Mexican Peso'},
-      { id:2, code: 'EUR', text: 'Euro'},
-      { id:3, code: 'GBP', text: 'Sterling'},
-])
-
-const cryptoCurrencies = ref<ICryptoCurrencies[]>([])
-
-const error = ref<string>('')
+const { currencies, cryptoCurrencies, quoteValues, load, getQuote, displayValues } = useCrypto()
 
 const quote = reactive<IQuote>({
   currency:'',
   cryptoCurrency:''
 })
 
-let quoteValues = ref<any>({})
-
-
-onMounted(() => {
-  const url:string = 'https://min-api.cryptocompare.com/data/top/totaltoptiervolfull?limit=20&tsym=EUR'
-  fetch(url)
-    //using promese
-    .then(result => result.json())
-    .then(({ Data }) => cryptoCurrencies.value = Data )
-});
-
-const getQuote = async() => {
-  const { currency, cryptoCurrency } = quote
-  const url:string = `https://min-api.cryptocompare.com/data/pricemultifull?fsyms=${cryptoCurrency}&tsyms=${currency}`
-
-  //using fetch without promese
-  const response = await fetch(url)
-  const data = await response.json()
-  quoteValues.value = data.DISPLAY[cryptoCurrency][currency]
-}
+const error = ref<string>('')
 
 const quoteCrypto = () => {
   //https://developer.mozilla.org/fr/docs/Web/JavaScript/Reference/Global_Objects/Object/values
@@ -64,15 +22,9 @@ const quoteCrypto = () => {
     return
   }
   error.value = ''
-  getQuote()
+  getQuote(quote)
 }
 
-const displayValues = computed(() => {
-  return Object.values(quoteValues.value).length > 0
-});
-
-
-  
 </script>
 
 <template>
@@ -114,18 +66,12 @@ const displayValues = computed(() => {
         </div>
         <input type="submit" value="Quote">
       </form>
-      <div v-if="displayValues" class="data-container">
-        <h2>Quote</h2>
-        <div class="result">
-          <img :src="`https://cryptocompare.com/` + quoteValues.IMAGEURL" alt="Cryptocurrency" srcset="">
-          <div>
-            <p>Price: <span>{{ quoteValues.PRICE }}</span></p>
-            <p>Journaly maximal price: <span>{{ quoteValues.HIGHDAY }}</span></p>
-            <p>Journaly minimal price: <span>{{ quoteValues.LOWDAY }}</span></p>
-            <p>Latest 24 hours variation: <span>{{ quoteValues.CHANGEPCT24HOUR }}%</span></p>
-          </div>
-        </div>
-      </div>
+      
+      <Spinner v-if="load"/>
+      <ResultValues 
+        v-if="displayValues"
+        :quoteValues="quoteValues"
+      />
     </div>
   </div>
 </template>
